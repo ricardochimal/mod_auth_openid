@@ -131,22 +131,22 @@ namespace modauthopenid {
   };
 
   string get_header(request_rec *r, string headername, string def) {
-    const char * header_c = apr_table_get(r->headers_in, "Cookie");
+    const char * header_c = apr_table_get(r->headers_in, headername.c_str());
     return (header_c == NULL) ? def : string(header_c);
   };
 
   string get_proto_host_port(request_rec *r) {
     string hostname(r->hostname);
-    hostname = get_header(r, "x-forwarded-host", hostname);
+    hostname = get_header(r, "X-Forwarded-Host", hostname);
 
     // Fetch the APR function for determining if we are looking at an https URL
     APR_OPTIONAL_FN_TYPE(ssl_is_https) *using_https = APR_RETRIEVE_OPTIONAL_FN(ssl_is_https);
-    string prefix = (using_https != NULL && using_https(r->connection)) ? "https://" : "http://";
-    prefix = get_header(r, "x-forwarded-proto", prefix);
+    bool proxied_ssl = get_header(r, "X-Forwarded-Proto", string("unknown")) == "https";
+    string prefix = (using_https != NULL && using_https(r->connection)) || proxied_ssl ? "https://" : "http://";
 
     apr_port_t i_port = ap_get_server_port(r);
     string port(apr_psprintf(r->pool, "%lu", (unsigned long) i_port));
-    port = get_header(r, "x-forwarded-port", port);
+    port = get_header(r, "X-Forwarded-Port", port);
     port = (port == "80" || port == "443") ? "" : ":" + port;
 
     return prefix + hostname + port;
